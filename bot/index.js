@@ -5,7 +5,7 @@ import qrcode from "qrcode-terminal";
 import config from "./config.js";
 import logger from "./logger.js";
 
-const { Client, LocalAuth } = pkg;
+const { Client, LocalAuth, MessageMedia } = pkg;
 
 const app = express();
 const API_PORT = 3001;
@@ -22,6 +22,10 @@ logger.info(config.APP_NAME);
 logger.info(`Version : ${config.VERSION}`);
 logger.info("Bot Engine Başlatılıyor...");
 logger.info("======================================");
+
+function getChatId(number) {
+    return number.replace(/\D/g, "") + "@c.us";
+}
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -112,9 +116,54 @@ app.post("/send-message", async (req, res) => {
             });
         }
 
-        const chatId = number.replace(/\D/g, "") + "@c.us";
+        await client.sendMessage(
+            getChatId(number),
+            message
+        );
 
-        await client.sendMessage(chatId, message);
+        return res.json({
+            success: true
+        });
+
+    } catch (err) {
+
+        logger.error(err);
+
+        return res.status(500).json({
+            success: false,
+            error: err.message
+        });
+
+    }
+
+});
+
+app.post("/send-file", async (req, res) => {
+
+    try {
+
+        const {
+            number,
+            path,
+            caption = ""
+        } = req.body;
+
+        if (!number || !path) {
+            return res.status(400).json({
+                success: false,
+                error: "number and path are required"
+            });
+        }
+
+        const media = MessageMedia.fromFilePath(path);
+
+        await client.sendMessage(
+            getChatId(number),
+            media,
+            {
+                caption
+            }
+        );
 
         return res.json({
             success: true
