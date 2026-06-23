@@ -1,5 +1,4 @@
-import json
-from pathlib import Path
+import httpx
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -12,7 +11,7 @@ app = FastAPI(
 
 templates = Jinja2Templates(directory="/app/templates")
 
-STATUS_FILE = Path("/storage/status.json")
+BOT_API = "http://bot:3001/status"
 
 
 @app.get("/")
@@ -26,20 +25,12 @@ async def home(request: Request):
 @app.get("/api/status")
 async def api_status():
 
-    if not STATUS_FILE.exists():
-        return JSONResponse(
-            {
-                "connected": False,
-                "message": "Status file not found"
-            }
-        )
-
     try:
 
-        with STATUS_FILE.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(BOT_API)
 
-        return JSONResponse(data)
+        return JSONResponse(response.json())
 
     except Exception as e:
 
