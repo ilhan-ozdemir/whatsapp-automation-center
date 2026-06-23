@@ -20,6 +20,9 @@ services:
       - ./storage:/storage
       - ./logs:/logs
 
+    ports:
+      - "3001:3001"
+
     networks:
       - wac-network
 

@@ -1,4 +1,5 @@
 import fs from "fs";
+import express from "express";
 import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 
@@ -6,6 +7,9 @@ import config from "./config.js";
 import logger from "./logger.js";
 
 const { Client, LocalAuth } = pkg;
+
+const app = express();
+const API_PORT = 3001;
 
 const STATUS_FILE = "/storage/status.json";
 
@@ -99,6 +103,23 @@ client.on("disconnected", reason => {
         message: reason
     });
 
+});
+
+app.get("/status", (req, res) => {
+    try {
+        const data = fs.readFileSync(STATUS_FILE, "utf8");
+        res.setHeader("Content-Type", "application/json");
+        res.send(data);
+    } catch (err) {
+        res.status(500).json({
+            connected: false,
+            message: err.message
+        });
+    }
+});
+
+app.listen(API_PORT, "0.0.0.0", () => {
+    logger.info(`REST API listening on port ${API_PORT}`);
 });
 
 client.initialize();
