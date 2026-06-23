@@ -1,4 +1,3 @@
-import fs from "fs";
 import express from "express";
 import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
@@ -11,26 +10,16 @@ const { Client, LocalAuth } = pkg;
 const app = express();
 const API_PORT = 3001;
 
-const STATUS_FILE = "/storage/status.json";
-
-function writeStatus(data) {
-    fs.writeFileSync(
-        STATUS_FILE,
-        JSON.stringify(data, null, 4),
-        "utf8"
-    );
-}
+let status = {
+    connected: false,
+    message: "Bot starting"
+};
 
 logger.info("======================================");
 logger.info(config.APP_NAME);
 logger.info(`Version : ${config.VERSION}`);
 logger.info("Bot Engine Başlatılıyor...");
 logger.info("======================================");
-
-writeStatus({
-    connected: false,
-    message: "Bot starting"
-});
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -51,10 +40,10 @@ client.on("qr", qr => {
 
     logger.info("QR Code oluşturuldu.");
 
-    writeStatus({
+    status = {
         connected: false,
         message: "Waiting for QR scan"
-    });
+    };
 
     qrcode.generate(qr, {
         small: true
@@ -74,12 +63,12 @@ client.on("ready", () => {
 
     const info = client.info;
 
-    writeStatus({
+    status = {
         connected: true,
         name: info.pushname,
         number: info.wid.user,
         platform: info.platform
-    });
+    };
 
 });
 
@@ -87,10 +76,10 @@ client.on("auth_failure", msg => {
 
     logger.error(`Auth Failure: ${msg}`);
 
-    writeStatus({
+    status = {
         connected: false,
         message: msg
-    });
+    };
 
 });
 
@@ -98,24 +87,14 @@ client.on("disconnected", reason => {
 
     logger.warn(`Disconnected: ${reason}`);
 
-    writeStatus({
+    status = {
         connected: false,
         message: reason
-    });
+    };
 
 });
-
 app.get("/status", (req, res) => {
-    try {
-        const data = fs.readFileSync(STATUS_FILE, "utf8");
-        res.setHeader("Content-Type", "application/json");
-        res.send(data);
-    } catch (err) {
-        res.status(500).json({
-            connected: false,
-            message: err.message
-        });
-    }
+    res.json(status);
 });
 
 app.listen(API_PORT, "0.0.0.0", () => {
