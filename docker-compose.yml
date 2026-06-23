@@ -1,0 +1,53 @@
+name: whatsapp-automation-center
+
+services:
+
+  bot:
+    container_name: wac-bot
+    build:
+      context: .
+      dockerfile: docker/bot/Dockerfile
+
+    working_dir: /app
+
+    restart: unless-stopped
+
+    tty: true
+    stdin_open: true
+
+    volumes:
+      - ./bot:/app
+      - ./storage:/storage
+      - ./logs:/logs
+
+    networks:
+      - wac-network
+
+  panel:
+    container_name: wac-panel
+    build:
+      context: .
+      dockerfile: docker/panel/Dockerfile
+
+    working_dir: /app
+
+    restart: unless-stopped
+
+    tty: true
+    stdin_open: true
+
+    volumes:
+      - ./app:/app
+      - ./database:/database
+      - ./logs:/logs
+      - ./storage:/storage
+
+    ports:
+      - "8090:8000"
+
+    networks:
+      - wac-network
+
+networks:
+  wac-network:
+    driver: bridge

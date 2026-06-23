@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Environment
+.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Storage
+storage/*
+!storage/.gitkeep
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Playwright / Chromium
+bot/.wwebjs_auth/
+bot/.wwebjs_cache/
+bot/chrome/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
