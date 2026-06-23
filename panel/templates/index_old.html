@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>WhatsApp Automation Center</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+
+        html,
+        body{
+
+            height:100%;
+            overflow:hidden;
+
+        }
+
+        body{
+
+            background:#ece5dd;
+
+        }
+
+        .navbar{
+
+            height:60px;
+
+        }
+
+        .main{
+
+            height:calc(100vh - 60px);
+
+        }
+
+        .sidebar{
+
+            background:#ffffff;
+
+            border-right:1px solid #ddd;
+
+            height:100%;
+
+            display:flex;
+
+            flex-direction:column;
+
+        }
+
+        .chat-list{
+
+            overflow-y:auto;
+
+            flex:1;
+
+        }
+
+        .chat-item{
+
+            cursor:pointer;
+
+            padding:12px;
+
+            border-bottom:1px solid #eee;
+
+            transition:.2s;
+
+        }
+
+        .chat-item:hover{
+
+            background:#f5f5f5;
+
+        }
+
+        .chat-item.active{
+
+            background:#e8f5e9;
+
+        }
+
+        .chat-title{
+
+            font-weight:bold;
+
+        }
+
+        .chat-type{
+
+            color:#666;
+
+            font-size:13px;
+
+        }
+
+        .conversation{
+
+            display:flex;
+
+            flex-direction:column;
+
+            height:100%;
+
+            background:#efeae2;
+
+        }
+
+        .conversation-header{
+
+            background:#f8f9fa;
+
+            border-bottom:1px solid #ddd;
+
+            padding:15px;
+
+            font-weight:bold;
+
+            min-height:60px;
+
+        }
+
+        .messages{
+
+            flex:1;
+
+            overflow-y:auto;
+
+            padding:20px;
+
+        }
+
+        .message{
+
+            max-width:75%;
+
+            padding:10px 14px;
+
+            border-radius:10px;
+
+            margin-bottom:10px;
+
+            word-break:break-word;
+
+            white-space:pre-wrap;
+
+            box-shadow:0 1px 2px rgba(0,0,0,.15);
+
+        }
+
+        .me{
+
+            margin-left:auto;
+
+            background:#d9fdd3;
+
+        }
+
+        .other{
+
+            margin-right:auto;
+
+            background:#ffffff;
+
+        }
+
+        .message-time{
+
+            font-size:11px;
+
+            color:#666;
+
+            margin-top:5px;
+
+            text-align:right;
+
+        }
+
+        .composer{
+
+            background:#f8f9fa;
+
+            border-top:1px solid #ddd;
+
+            padding:15px;
+
+        }
+
+        #message{
+
+            resize:none;
+
+        }
+
+        .status-box{
+
+            font-size:13px;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-success">
+
+    <div class="container-fluid">
+
+        <span class="navbar-brand">
+
+            WhatsApp Automation Center
+
+        </span>
+
+        <span id="connected">
+
+            ...
+
+        </span>
+
+    </div>
+
+</nav>
+
+<div class="container-fluid main">
+
+<div class="row h-100">
+
+<div class="col-lg-3 p-0 sidebar">
+
+<div class="p-3 border-bottom">
+
+<div>
+
+<strong>Profil</strong>
+
+</div>
+
+<div id="name">
+
+-
+
+</div>
+
+<hr>
+
+<div>
+
+<strong>Telefon</strong>
+
+</div>
+
+<div id="number">
+
+-
+
+</div>
+
+<hr>
+
+<div>
+
+<strong>Platform</strong>
+
+</div>
+
+<div id="platform">
+
+-
+
+</div>
+
+<hr>
+
+<div class="status-box">
+
+Son Güncelleme
+
+<br>
+
+<small id="updated">
+
+-
+
+</small>
+
+</div>
+
+</div>
+
+<div
+
+id="chatList"
+
+class="chat-list">
+
+<div class="p-3 text-muted">
+
+Yükleniyor...
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-lg-9 p-0">
+
+<div class="conversation">
+
+<div
+
+class="conversation-header"
+
+id="selectedChat">
+
+Sohbet seçiniz
+
+</div>
+
+<div
+
+id="messages"
+
+class="messages">
+
+<div class="text-center text-muted mt-5">
+
+Soldaki listeden bir sohbet seçiniz.
+
+</div>
+
+</div>
+
+<div class="composer">
+
+<div class="row">
+
+<div class="col-10">
+
+<textarea
+
+id="message"
+
+rows="3"
+
+class="form-control"
+
+placeholder="Mesaj yaz..."></textarea>
+
+</div>
+
+<div class="col-2 d-grid">
+
+<button
+
+class="btn btn-success"
+
+onclick="sendMessage()">
+
+Gönder
+
+</button>
+
+</div>
+
+</div>
+
+<div
+
+id="result"
+
+class="mt-2">
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let selectedId = "";
+let selectedName = "";
+async function loadStatus(){
+
+const response = await fetch("/api/status");
+
+const data = await response.json();
+
+document.getElementById("connected").innerHTML =
+
+    data.connected
+
+    ? '<span class="badge bg-success">🟢 Bağlı</span>'
+
+    : '<span class="badge bg-danger">🔴 Bağlı Değil</span>';
+
+document.getElementById("name").textContent =
+    data.name ?? "-";
+
+document.getElementById("number").textContent =
+    data.number ?? "-";
+
+document.getElementById("platform").textContent =
+    data.platform ?? "-";
+
+document.getElementById("updated").textContent =
+    new Date().toLocaleString("tr-TR");
+
+}
+
+async function loadChats(){
+
+const response = await fetch("/api/chats");
+
+const chats = await response.json();
+
+const list = document.getElementById("chatList");
+
+list.innerHTML = "";
+
+chats.forEach(chat=>{
+
+    const item = document.createElement("div");
+
+    item.className = "chat-item";
+
+    if(chat.id===selectedId){
+
+        item.classList.add("active");
+
+    }
+
+    item.innerHTML = `
+
+        <div class="chat-title">
+
+            ${chat.name}
+
+        </div>
+
+        <div class="chat-type">
+
+            ${chat.isGroup ? "👥 Grup" : "👤 Kişi"}
+
+        </div>
+
+    `;
+
+    item.onclick = async ()=>{
+
+        selectedId = chat.id;
+
+        selectedName = chat.name;
+
+        document.getElementById("selectedChat").textContent =
+            chat.name;
+
+        await loadChats();
+
+        await loadMessages();
+
+    };
+
+    list.appendChild(item);
+
+});
+
+}
+
+async function loadMessages(){
+
+if(!selectedId){
+
+    return;
+
+}
+
+const response = await fetch(
+
+    "/api/messages/" +
+
+    encodeURIComponent(selectedId)
+
+);
+
+const messages = await response.json();
+
+const box = document.getElementById("messages");
+
+box.innerHTML = "";
+
+messages.forEach(msg=>{
+
+    const div = document.createElement("div");
+
+    div.className =
+
+        "message " +
+
+        (msg.fromMe ? "me" : "other");
+
+    let body = "";
+
+    if(msg.type==="chat"){
+
+        body = msg.body;
+
+    }
+
+    else if(msg.type==="image"){
+
+        body = "🖼️ Görsel";
+
+        if(msg.body){
+
+            body += "<br><br>" + msg.body;
+
+        }
+
+    }
+
+    else if(msg.type==="video"){
+
+        body = "🎥 Video";
+
+        if(msg.body){
+
+            body += "<br><br>" + msg.body;
+
+        }
+
+    }
+
+    else if(msg.type==="document"){
+
+        body = "📄 Belge";
+
+        if(msg.body){
+
+            body += "<br><br>" + msg.body;
+
+        }
+
+    }
+
+    else{
+
+        body =
+
+            "📎 " + msg.type;
+
+    }
+
+    const date =
+
+        new Date(
+
+            msg.timestamp * 1000
+
+        );
+
+    div.innerHTML = `
+
+        <div>
+
+            ${body}
+
+        </div>
+
+        <div class="message-time">
+
+            ${date.toLocaleString("tr-TR")}
+
+        </div>
+
+    `;
+
+    box.appendChild(div);
+
+});
+
+box.scrollTop = box.scrollHeight;
+
+}
+async function sendMessage(){
+
+if(!selectedId){
+
+    alert("Önce bir sohbet seçiniz.");
+
+    return;
+
+}
+
+const input = document.getElementById("message");
+
+const message = input.value.trim();
+
+if(message===""){
+
+    return;
+
+}
+
+const response = await fetch("/api/send-message",{
+
+    method:"POST",
+
+    headers:{
+        "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+
+        chatId:selectedId,
+
+        message:message
+
+    })
+
+});
+
+const result = await response.json();
+
+const resultBox = document.getElementById("result");
+
+if(result.success){
+
+    resultBox.innerHTML =
+
+        '<div class="alert alert-success py-2 mb-0">✅ Mesaj gönderildi.</div>';
+
+    input.value = "";
+
+    await loadMessages();
+
+}
+
+else{
+
+    resultBox.innerHTML =
+
+        '<div class="alert alert-danger py-2 mb-0">❌ '+result.error+'</div>';
+
+}
+
+}
+
+setInterval(async()=>{
+
+await loadStatus();
+
+if(selectedId){
+
+    await loadMessages();
+
+}
+
+},5000);
+
+setInterval(loadChats,30000);
+
+loadStatus();
+
+loadChats();
+
+document.getElementById("message").addEventListener("keydown",async e=>{
+
+if(e.key==="Enter" && !e.shiftKey){
+
+    e.preventDefault();
+
+    await sendMessage();
+
+}
+
+});
+
+</script>
+
+</body>
+
+</html>

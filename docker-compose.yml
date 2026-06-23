@@ -4,6 +4,7 @@ services:
 
   bot:
     container_name: wac-bot
+
     build:
       context: .
       dockerfile: docker/bot/Dockerfile
@@ -26,8 +27,11 @@ services:
     networks:
       - wac-network
 
+
+
   panel:
     container_name: wac-panel
+
     build:
       context: .
       dockerfile: docker/panel/Dockerfile
@@ -40,17 +44,24 @@ services:
     stdin_open: true
 
     volumes:
-      - ./app:/app
+      - ./panel:/app
       - ./database:/database
-      - ./logs:/logs
       - ./storage:/storage
+      - ./logs:/logs
 
     ports:
       - "8090:8000"
 
+    depends_on:
+      - bot
+
     networks:
       - wac-network
 
+
+
 networks:
+
   wac-network:
+
     driver: bridge
