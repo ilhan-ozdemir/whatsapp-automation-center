@@ -5,8 +5,8 @@ import config from "./config.js";
 import logger from "./logger.js";
 
 import client from "./services/whatsapp.js";
+import Forwarder from "./services/forwarder.js";
 import { setStatus } from "./services/status.js";
-import MessageService from "./services/MessageService.js";
 
 import statusRoutes from "./routes/status.js";
 import chatsRoutes from "./routes/chats.js";
@@ -27,71 +27,49 @@ logger.info("Bot Engine Başlatılıyor...");
 logger.info("======================================");
 
 setStatus({
-    connected: false,
-    message: "Bot starting"
+    connected:false,
+    message:"Bot starting"
 });
 
 client.on("qr", qr => {
 
     logger.info("QR Code oluşturuldu.");
 
-    setStatus({
-        connected: false,
-        message: "Waiting for QR scan"
-    });
-
-    qrcode.generate(qr, {
-        small: true
-    });
+    qrcode.generate(qr,{small:true});
 
 });
 
-client.on("authenticated", () => {
+client.on("authenticated",()=>{
 
     logger.info("Kimlik doğrulandı.");
 
 });
 
-client.on("ready", () => {
+client.on("ready",()=>{
 
     logger.info("WhatsApp bağlandı.");
 
-    const info = client.info;
+});
 
-    setStatus({
-        connected: true,
-        name: info.pushname,
-        number: info.wid.user,
-        platform: info.platform
-    });
+client.on("message_create",async message=>{
+
+    logger.info(
+        `[EVENT] from=${message.from} to=${message.to} author=${message.author} fromMe=${message.fromMe} type=${message.type}`
+    );
+
+    await Forwarder.handle(client,message);
 
 });
 
-client.on("message_create", async message => {
+client.on("auth_failure",msg=>{
 
-    await MessageService.save(message);
-
-});
-
-client.on("auth_failure", msg => {
-
-    logger.error(`Auth Failure: ${msg}`);
-
-    setStatus({
-        connected: false,
-        message: msg
-    });
+    logger.error(msg);
 
 });
 
-client.on("disconnected", reason => {
+client.on("disconnected",reason=>{
 
-    logger.warn(`Disconnected: ${reason}`);
-
-    setStatus({
-        connected: false,
-        message: reason
-    });
+    logger.warn(reason);
 
 });
 
@@ -102,7 +80,7 @@ app.use(filesRoutes);
 app.use(messagesRoutes);
 app.use(mediaRoutes);
 
-app.listen(API_PORT, "0.0.0.0", () => {
+app.listen(API_PORT,"0.0.0.0",()=>{
 
     logger.info(`REST API listening on port ${API_PORT}`);
 

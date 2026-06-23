@@ -18,6 +18,7 @@ services:
 
     volumes:
       - ./bot:/app
+      - bot_node_modules:/app/node_modules
       - ./storage:/storage
       - ./logs:/logs
 
@@ -26,8 +27,6 @@ services:
 
     networks:
       - wac-network
-
-
 
   panel:
     container_name: wac-panel
@@ -58,10 +57,9 @@ services:
     networks:
       - wac-network
 
-
-
 networks:
-
   wac-network:
-
     driver: bridge
+
+volumes:
+  bot_node_modules:

@@ -11,8 +11,14 @@ RUN apt-get update && \
         wget \
         ca-certificates \
         dumb-init \
-        chromium && \
+        chromium \
+        build-essential \
+        python3 && \
     rm -rf /var/lib/apt/lists/*
+
+COPY bot/package*.json ./
+
+RUN npm install
 
 ENTRYPOINT ["/usr/bin/dumb-init","--"]
 

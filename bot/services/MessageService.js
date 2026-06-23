@@ -48,9 +48,15 @@ class MessageService {
 
             });
 
+            logger.info(
+                `Message saved : ${message.id.id}`
+            );
+
         } catch (err) {
 
-            logger.error(`MessageService: ${err.message}`);
+            logger.error(
+                `MessageService : ${err.message}`
+            );
 
         }
 
