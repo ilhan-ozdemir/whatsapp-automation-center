@@ -1,5 +1,10 @@
 import fs from "fs";
+
 import AlarmSession from "./alarmSession.js";
+import RuleMatcher from "./ruleMatcher.js";
+import MessageQueue from "./messageQueue.js";
+import Sender from "./sender.js";
+
 import logger from "../logger.js";
 
 const CONFIG_FILE = "/app/config/forwarder.json";
@@ -9,7 +14,9 @@ class Forwarder {
     constructor() {
 
         this.config = {
+
             rules: []
+
         };
 
         this.load();
@@ -21,157 +28,99 @@ class Forwarder {
         try {
 
             this.config = JSON.parse(
-                fs.readFileSync(CONFIG_FILE, "utf8")
+
+                fs.readFileSync(
+                    CONFIG_FILE,
+                    "utf8"
+                )
+
             );
 
             logger.info(
+
                 `Forward rules loaded (${this.config.rules.length})`
+
             );
 
         } catch (err) {
 
-            logger.error(err.message);
+            logger.error(
 
-        }
+                err.message
 
-    }
-
-    getSource(message) {
-
-        if (message.to && message.to.endsWith("@g.us"))
-            return message.to;
-
-        if (message.from && message.from.endsWith("@g.us"))
-            return message.from;
-
-        return message.from;
-
-    }
-
-    findRule(message) {
-
-        const source = this.getSource(message);
-
-        for (const rule of this.config.rules) {
-
-            if (!rule.enabled)
-                continue;
-
-            if (!rule.sources)
-                continue;
-
-            if (rule.sources.includes(source))
-                return rule;
-
-        }
-
-        return null;
-
-    }
-
-    isMedia(message) {
-
-        return [
-
-            "image",
-            "video",
-            "document",
-            "audio",
-            "ptt"
-
-        ].includes(message.type);
-
-    }
-
-    async queueMessage(session,message){
-
-        const item={
-
-            type:message.type,
-
-            body:message.body || "",
-
-            caption:message.caption || "",
-
-            timestamp:message.timestamp,
-
-            media:null
-
-        };
-
-        if(this.isMedia(message)){
-
-            logger.info(
-                "Downloading media..."
             );
 
-            try{
-
-                item.media=
-                    await message.downloadMedia();
-
-            }catch(err){
-
-                logger.error(err.message);
-
-                return false;
-
-            }
-
-            if(!item.media){
-
-                logger.warn(
-                    "downloadMedia() returned null"
-                );
-
-                return false;
-
-            }
-
         }
-
-        session.messages.push(item);
-
-        logger.info(
-
-            `Queued ${item.type} (${session.messages.length})`
-
-        );
-
-        return true;
 
     }
 
-    async handle(client,message){
+    async handle(client, message) {
 
-        const rule=this.findRule(message);
+        const rule =
 
-        if(!rule)
+            RuleMatcher.findRule(
+
+                this.config,
+
+                message
+
+            );
+
+        if (!rule)
             return;
 
-        const source=this.getSource(message);
+        const source =
 
-        let session=
-            AlarmSession.get(source);
+            RuleMatcher.getSource(
 
-        if(!session){
+                message
 
-            if(!this.isMedia(message))
+            );
+
+        let session =
+
+            AlarmSession.get(
+
+                source
+
+            );
+
+        if (!session) {
+
+            if (
+
+                !MessageQueue.isMedia(
+
+                    message
+
+                )
+
+            )
                 return;
 
-            session=
-                AlarmSession.create(source);
+            session =
+
+                AlarmSession.create(
+
+                    source
+
+                );
 
         }
 
-        const ok=
-            await this.queueMessage(
+        const ok =
+
+            await MessageQueue.queue(
+
                 session,
+
                 message
+
             );
 
-        if(!ok)
+        if (!ok)
             return;
+
         AlarmSession.resetTimer(
 
             source,
@@ -179,130 +128,188 @@ class Forwarder {
             rule.sessionTimeout || 30,
 
             async finishedSession => {
+                await Sender.flush(
 
-                logger.info(
-                    `Forwarding ${finishedSession.messages.length} message(s)...`
-                );
+                    client,
 
-                const min =
-                    rule.randomDelayMin || 2;
+                    rule,
 
-                const max =
-                    rule.randomDelayMax || 8;
+                    finishedSession
 
-                const startupDelay =
-
-                    (Math.floor(
-                        Math.random() *
-                        ((max - min + 1) * 1000)
-                    )) +
-
-                    (min * 1000);
-
-                logger.info(
-                    `Waiting ${startupDelay} ms`
-                );
-
-                await new Promise(resolve =>
-                    setTimeout(resolve, startupDelay)
-                );
-
-                for (const target of rule.targets) {
-
-                    logger.info(
-                        `Target : ${target}`
-                    );
-
-                    for (const item of finishedSession.messages) {
-
-                        try {
-
-                            switch (item.type) {
-
-                                case "chat":
-
-                                    if (
-                                        item.body &&
-                                        item.body.trim() !== ""
-                                    ) {
-
-                                        await client.sendMessage(
-                                            target,
-                                            item.body
-                                        );
-
-                                    }
-
-                                    break;
-
-                                case "image":
-
-                                case "video":
-
-                                case "document":
-
-                                case "audio":
-
-                                case "ptt":
-
-                                    await client.sendMessage(
-
-                                        target,
-
-                                        item.media,
-
-                                        {
-
-                                            caption:
-                                                item.caption ||
-                                                item.body ||
-                                                ""
-
-                                        }
-
-                                    );
-
-                                    break;
-
-                                default:
-
-                                    logger.warn(
-                                        `Unknown type ${item.type}`
-                                    );
-
-                            }
-
-                            const pause =
-
-                                500 +
-
-                                Math.floor(
-                                    Math.random() * 1200
-                                );
-
-                            await new Promise(resolve =>
-                                setTimeout(resolve, pause)
-                            );
-
-                        } catch (err) {
-
-                            logger.error(
-                                err.message
-                            );
-
-                        }
-
-                    }
-
-                }
-
-                logger.info(
-                    "Forward completed."
                 );
 
             }
 
         );
+
+    }
+
+    reload() {
+
+        logger.info(
+
+            "Reloading forwarder configuration..."
+
+        );
+
+        this.load();
+
+    }
+
+    getRules() {
+
+        return this.config.rules;
+
+    }
+
+    hasRules() {
+
+        return (
+
+            this.config.rules &&
+
+            this.config.rules.length > 0
+
+        );
+
+    }
+
+    addRule(rule) {
+
+        this.config.rules.push(
+
+            rule
+
+        );
+
+    }
+
+    removeRule(index) {
+
+        if (
+
+            index < 0 ||
+
+            index >= this.config.rules.length
+
+        )
+
+            return false;
+
+        this.config.rules.splice(
+
+            index,
+
+            1
+
+        );
+
+        return true;
+
+    }
+
+    save() {
+
+        fs.writeFileSync(
+
+            CONFIG_FILE,
+
+            JSON.stringify(
+
+                this.config,
+
+                null,
+
+                4
+
+            )
+
+        );
+
+        logger.info(
+
+            "forwarder.json saved."
+
+        );
+
+    }
+    enableRule(index) {
+
+        if (
+
+            index < 0 ||
+
+            index >= this.config.rules.length
+
+        )
+
+            return false;
+
+        this.config.rules[index].enabled = true;
+
+        return true;
+
+    }
+
+    disableRule(index) {
+
+        if (
+
+            index < 0 ||
+
+            index >= this.config.rules.length
+
+        )
+
+            return false;
+
+        this.config.rules[index].enabled = false;
+
+        return true;
+
+    }
+
+    findBySource(source) {
+
+        return this.config.rules.filter(
+
+            rule =>
+
+                rule.sources &&
+
+                rule.sources.includes(source)
+
+        );
+
+    }
+
+    findByTarget(target) {
+
+        return this.config.rules.filter(
+
+            rule =>
+
+                rule.targets &&
+
+                rule.targets.includes(target)
+
+        );
+
+    }
+
+    stats() {
+
+        return {
+
+            rules: this.config.rules.length,
+
+            enabled: this.config.rules.filter(
+
+                r => r.enabled
+
+            ).length
+
+        };
 
     }
 }
