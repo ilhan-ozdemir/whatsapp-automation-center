@@ -1,0 +1,22 @@
+[Unit]
+Description=WhatsApp Automation Center Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=wac
+Group=wac
+WorkingDirectory=/home/wac/whatsapp-automation-center/bot
+EnvironmentFile=/etc/wac/wac.env
+Environment=HOME=/home/wac
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+# Snap requires its own mount namespace and privilege transitions.
+# Do not enable NoNewPrivileges/ProtectHome/PrivateTmp for this service.
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,8 @@
+import os
+from pathlib import Path
+
 import httpx
+from panel.auth import protect
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -12,13 +16,14 @@ app = FastAPI(
 
 app.mount(
     "/static",
-    StaticFiles(directory="/app/static"),
+    StaticFiles(directory=str(Path(__file__).parent / "static")),
     name="static"
 )
 
-templates = Jinja2Templates(directory="/app/templates")
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
-BOT_API = "http://bot:3001"
+BOT_API = os.environ.get("BOT_API_URL", "http://127.0.0.1:3001").rstrip("/")
+app.middleware("http")(protect)
 
 
 @app.get("/")
@@ -41,7 +46,7 @@ async def api_status():
                 f"{BOT_API}/status"
             )
 
-        return JSONResponse(response.json())
+        return JSONResponse(response.json(), status_code=response.status_code)
 
     except Exception as e:
 
@@ -65,7 +70,7 @@ async def api_chats():
                 f"{BOT_API}/chats"
             )
 
-        return JSONResponse(response.json())
+        return JSONResponse(response.json(), status_code=response.status_code)
 
     except Exception as e:
 
@@ -89,7 +94,7 @@ async def api_messages(chat_id: str):
                 f"{BOT_API}/messages/{chat_id}"
             )
 
-        return JSONResponse(response.json())
+        return JSONResponse(response.json(), status_code=response.status_code)
 
     except Exception as e:
 
@@ -116,7 +121,7 @@ async def api_send_message(request: Request):
                 json=data
             )
 
-        return JSONResponse(response.json())
+        return JSONResponse(response.json(), status_code=response.status_code)
 
     except Exception as e:
 
@@ -143,7 +148,7 @@ async def api_send_file(request: Request):
                 json=data
             )
 
-        return JSONResponse(response.json())
+        return JSONResponse(response.json(), status_code=response.status_code)
 
     except Exception as e:
 
@@ -154,3 +159,17 @@ async def api_send_file(request: Request):
             },
             status_code=500
         )
+
+
+@app.get("/api/media/{message_id}")
+@app.get("/media/{message_id}")
+async def api_media(message_id: str):
+    from fastapi.responses import Response
+    from urllib.parse import quote
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(f"{BOT_API}/media/{quote(message_id, safe='')}")
+        return Response(response.content, status_code=response.status_code,
+                        media_type=response.headers.get("content-type", "application/octet-stream"))
+    except httpx.HTTPError:
+        return JSONResponse({"success": False, "error": "Bot media unavailable"}, status_code=502)

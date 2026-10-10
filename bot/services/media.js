@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-const ROOT = "/storage/uploads";
+import config from "../config.js";
+
+const ROOT = config.UPLOADS_PATH;
 
 function extensionFromMime(mime){
 

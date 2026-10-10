@@ -1,25 +1,12 @@
 import Database from "better-sqlite3";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import config from "../../config.js";
 
-const ROOT="/app/database";
-
-fs.mkdirSync(ROOT,{
-    recursive:true
-});
-
-const db=new Database(
-    path.join(ROOT,"app.db")
-);
-
-const schema=fs.readFileSync(
-
-    path.join(ROOT,"schema","schema.sql"),
-
-    "utf8"
-
-);
-
-db.exec(schema);
-
+fs.mkdirSync(path.dirname(config.DATABASE_PATH), { recursive: true });
+const db = new Database(config.DATABASE_PATH);
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+// The schema belongs to the code, independently of the persistent data location.
+db.exec(fs.readFileSync(new URL("../schema/schema.sql", import.meta.url), "utf8"));
 export default db;

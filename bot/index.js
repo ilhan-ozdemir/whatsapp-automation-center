@@ -16,7 +16,7 @@ import messagesRoutes from "./routes/messages.js";
 import mediaRoutes from "./routes/media.js";
 
 const app = express();
-const API_PORT = 3001;
+const API_PORT = config.BOT_PORT;
 
 app.use(express.json());
 
@@ -102,9 +102,9 @@ app.use(filesRoutes);
 app.use(messagesRoutes);
 app.use(mediaRoutes);
 
-app.listen(API_PORT, "0.0.0.0", () => {
+app.listen(API_PORT, config.BOT_HOST, () => {
 
-    logger.info(`REST API listening on port ${API_PORT}`);
+    logger.info(`REST API listening on ${config.BOT_HOST}:${API_PORT}`);
 
 });
 

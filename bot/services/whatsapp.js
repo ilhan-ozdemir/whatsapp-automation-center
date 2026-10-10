@@ -1,3 +1,4 @@
+import config from "../config.js";
 import pkg from "whatsapp-web.js";
 
 const { Client, LocalAuth } = pkg;
@@ -8,21 +9,21 @@ const client = new Client({
 
         clientId: "default",
 
-        dataPath: "/storage/session"
+        dataPath: config.SESSION_PATH
 
     }),
 
+    webVersionCache: { type: "local", path: config.CACHE_PATH },
+
     puppeteer: {
 
-        executablePath: "/usr/bin/chromium",
+        executablePath: config.CHROMIUM_PATH,
 
         headless: true,
 
         args: [
 
-            "--no-sandbox",
-
-            "--disable-setuid-sandbox",
+            ...(config.CHROMIUM_NO_SANDBOX ? ["--no-sandbox", "--disable-setuid-sandbox"] : []),
 
             "--disable-dev-shm-usage",
 

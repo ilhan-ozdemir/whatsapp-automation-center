@@ -1,0 +1,22 @@
+[Unit]
+Description=WhatsApp Automation Center Web Panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wac
+Group=wac
+WorkingDirectory=/home/wac/whatsapp-automation-center
+EnvironmentFile=/etc/wac/wac.env
+ExecStart=/home/wac/whatsapp-automation-center/.venv/bin/python -m uvicorn panel.main:app --host 0.0.0.0 --port 8090 --ssl-certfile /etc/wac/tls.crt --ssl-keyfile /etc/wac/tls.key --no-proxy-headers
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
